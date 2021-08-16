@@ -1,13 +1,16 @@
-use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream, SocketAddr};
-use std::thread::{JoinHandle, spawn};
-use std::io::stdin;
-use std::vec::Vec;
-use std::time::Instant;
 use std::fmt::Display;
+use std::io::prelude::*;
+use std::io::stdin;
+use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::thread::{spawn, JoinHandle};
+use std::time::Instant;
+use std::vec::Vec;
 
-fn strip(msg: &String, to_strip: &str) -> String { msg.strip_prefix(to_strip).unwrap().to_string() }
-fn getp(cmd: String) -> String {
+fn strip(msg: &String, to_strip: &str) -> String {
+    msg.strip_prefix(to_strip).unwrap().to_string()
+}
+
+fn getp(cmd: &String) -> String {
     let mut spaces = 0;
     for (index, &c) in cmd[..].as_bytes().iter().enumerate() {
         if c == b' ' {
@@ -17,29 +20,38 @@ fn getp(cmd: String) -> String {
             return String::from(&cmd[..index]);
         }
     }
-    cmd
+    cmd.clone()
 }
 
 fn start_server() -> (JoinHandle<()>, String) {
     println!("Open a port");
     let mut buffer = String::new();
-    stdin().read_line(&mut buffer).expect("Did not enter a correct string");
+    stdin()
+        .read_line(&mut buffer)
+        .expect("Did not enter a correct string");
     let server_addr = String::from("127.0.0.1:") + &buffer[0..4];
-    (spawn(move || {
-        let listener = TcpListener::bind(&server_addr[..]).unwrap();
-        println!("server started");
-        let mut streams_index: Vec::<String> = Vec::new();
-        let mut history: Vec::<String> = Vec::new();
-        for stream in listener.incoming() {
-            let stream = stream.unwrap();
-            if handle(stream, &streams_index, &history) { break; }
-        }
-    }), buffer[0..4].to_string())
+    (
+        spawn(move || {
+            let listener = TcpListener::bind(&server_addr[..]).unwrap();
+            println!("server started");
+            let mut streams_index: Vec<String> = Vec::new();
+            let mut history: Vec<String> = Vec::new();
+            for stream in listener.incoming() {
+                let stream = stream.unwrap();
+                if handle(stream, &mut streams_index, &mut history) {
+                    break;
+                }
+            }
+        }),
+        buffer[0..4].to_string(),
+    )
 }
 
-fn handle(mut stream: TcpStream,
-        mut streams_index: &Vec::<String>,
-        mut history: &Vec::<String>) -> bool {
+fn handle(
+    mut stream: TcpStream,
+    streams_index: &mut Vec<String>,
+    history: &mut Vec<String>,
+) -> bool {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).unwrap();
     let content = get_msg(buffer);
@@ -49,10 +61,10 @@ fn handle(mut stream: TcpStream,
         let mut command = String::from("p ");
         command += &Instant::now().elapsed().as_secs().to_string()[..];
         command.push(' ');
-        history.push(command);
+        history.push(String::from(&command[..]));
         propagate(&command[..], strip(&content, "i "), streams_index);
     } else if content.starts_with("p ") {
-        let command = getp(content);
+        let command = getp(&content);
         for h in history {
             if command.eq(h) {
                 return false;
@@ -74,19 +86,22 @@ fn handle(mut stream: TcpStream,
 
 /// todo:
 /// Propagate a command with another strategy ?
-fn propagate(command: &str, options: String, streams_index: &Vec::<String>) {
+fn propagate(command: &str, options: String, streams_index: &Vec<String>) {
     for stream in streams_index {
-        send(command.to_owned() + &options[..],
-            &stream.parse::<SocketAddr>().unwrap());
+        send(
+            command.to_owned() + &options[..],
+            &stream.parse::<SocketAddr>().unwrap(),
+        );
     }
 }
 
 fn run_client(port: String) -> std::io::Result<()> {
     loop {
         let mut input = String::new();
-        stdin().read_line(&mut input).expect("Did not enter a correct string");
-        let local_srv = &SocketAddr::from(([127, 0, 0, 1],
-            port[..4].parse::<u16>().unwrap()));
+        stdin()
+            .read_line(&mut input)
+            .expect("Did not enter a correct string");
+        let local_srv = &SocketAddr::from(([127, 0, 0, 1], port[..4].parse::<u16>().unwrap()));
         if input.starts_with("connect") {
             send(input, local_srv);
         }
@@ -94,7 +109,8 @@ fn run_client(port: String) -> std::io::Result<()> {
 }
 
 fn send(content: String, addr: &SocketAddr) -> bool {
-    let mut stream = TcpStream::connect_timeout(addr, std::time::Duration::new(30,0)).expect("wow");
+    let mut stream =
+        TcpStream::connect_timeout(addr, std::time::Duration::new(30, 0)).expect("wow");
     stream.write(content.as_bytes());
     content.eq(&String::from("q\n"))
 }
@@ -109,7 +125,9 @@ fn main() {
 fn get_msg(bytes: [u8; 1024]) -> String {
     let mut ret = String::new();
     for &c in bytes.iter() {
-        if c == b'\0' || c == b'\n' { break; }
+        if c == b'\0' || c == b'\n' {
+            break;
+        }
         ret += &String::from_utf8(vec![c]).unwrap()[..];
     }
     ret
