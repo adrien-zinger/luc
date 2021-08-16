@@ -38,10 +38,11 @@ fn start_server() -> (JoinHandle<()>, String) {
             let mut history: Vec<String> = Vec::new();
             for stream in listener.incoming() {
                 let stream = stream.unwrap();
-                if handle(stream, &mut streams_index, &mut history) {
+                if handle(stream, &mut streams_index, &mut history, &listener.local_addr().unwrap()) {
                     break;
                 }
             }
+            println!("server close");
         }),
         buffer[0..4].to_string(),
     )
@@ -51,13 +52,16 @@ fn handle(
     mut stream: TcpStream,
     streams_index: &mut Vec<String>,
     history: &mut Vec<String>,
+    srv_addr: &SocketAddr,
 ) -> bool {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).unwrap();
     let content = get_msg(buffer);
     let peer_addr = stream.peer_addr().unwrap();
     println!("msg from {}", peer_addr);
-    if content.starts_with("i ") {
+    if content.starts_with("index") {
+        println!("index: {}", format!("{:?}", streams_index));
+    } else if content.starts_with("i ") {
         let mut command = String::from("p ");
         command += &Instant::now().elapsed().as_secs().to_string()[..];
         command.push(' ');
@@ -76,10 +80,11 @@ fn handle(
     } else if content.starts_with("connect ") {
         let addr = strip(&content, "connect ");
         streams_index.push(addr);
-        propagate("connection", String::new(), streams_index);
+        propagate("connection", srv_addr.to_string(), streams_index);
     } else if content.starts_with("connection") {
-        println!("connection {}", peer_addr);
-        streams_index.push(peer_addr.to_string());
+        let addr = strip(&content, "connection");
+        println!("connection {}", addr);
+        streams_index.push(addr);
     }
     content.eq(&String::from("q"))
 }
@@ -102,9 +107,7 @@ fn run_client(port: String) -> std::io::Result<()> {
             .read_line(&mut input)
             .expect("Did not enter a correct string");
         let local_srv = &SocketAddr::from(([127, 0, 0, 1], port[..4].parse::<u16>().unwrap()));
-        if input.starts_with("connect") {
-            send(input, local_srv);
-        }
+        send(input, local_srv);
     }
 }
 
