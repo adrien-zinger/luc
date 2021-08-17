@@ -1,7 +1,8 @@
-mod server_impl;
 mod commands;
-use std::thread::JoinHandle;
+mod server_impl;
 
-pub fn start_server() -> (JoinHandle<()>, String) {
-  server_impl::start_server()
+//use futures::executor::block_on;
+
+pub async fn start_server_thread(port: &str) -> Result<(), Box<dyn std::error::Error>> {
+    server_impl::start_server(port).await
 }

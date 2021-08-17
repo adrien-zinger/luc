@@ -1,66 +1,76 @@
 use super::commands::*;
-use std::io::{stdin, Read};
-use std::thread::{spawn, JoinHandle};
-use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::net::SocketAddr;
 use std::vec::Vec;
 
-fn get_msg(bytes: [u8; 1024]) -> String {
-  let mut ret = String::new();
-  for &c in bytes.iter() {
-      if c == b'\0' || c == b'\n' {
-          break;
-      }
-      ret += &String::from_utf8(vec![c]).unwrap()[..];
-  }
-  ret
-}
+use tokio::io::AsyncReadExt;
+use tokio::net::TcpListener;
 
-fn handle(
-  mut stream: TcpStream,
-  streams_index: &mut Vec<String>,
-  history: &mut Vec<String>,
-  srv_addr: &SocketAddr,
+use std::str;
+use tokio::sync::Mutex;
+use std::sync::Arc;
+
+async fn handle(
+    content: &str,
+    streams_index: &mut Vec<String>,
+    history: &mut Vec<String>,
+    srv_addr: &SocketAddr,
 ) -> bool {
-  let mut buffer = [0; 1024];
-  stream.read_exact(&mut buffer).unwrap();
-  let mut content = get_msg(buffer);
-  if content.starts_with("index") {
-    println!("index: {}", format!("{:?}", streams_index));
-  } else if content.starts_with("luc ") {
-    command_i(&content, streams_index, history);
-  } else if content.starts_with("p ") {
-    command_p(&mut content, streams_index, history);
-  } else if content.starts_with("luc? ") {
-    command_connect(&content, srv_addr.to_string(), streams_index);
-  } else if content.starts_with("connection") {
-    command_connection(&content, streams_index);
-  } else if content.starts_with("history") {
-    println!("{}", format!("{:?}", history))
-  }
-  content.eq(&String::from("q"))
+    if content.starts_with("index") {
+        println!("index: {}", format!("{:?}", streams_index));
+    } else if content.starts_with("luc ") {
+        println!("command luc");
+        command_i(content, streams_index, history).await;
+    } else if content.starts_with("p ") {
+        command_p(&mut content.to_owned(), streams_index, history).await;
+    } else if content.starts_with("luc? ") {
+        command_connect(content, srv_addr.to_string(), streams_index).await;
+    } else if content.starts_with("connection") {
+        command_connection(content, streams_index);
+    } else if content.starts_with("history") {
+        println!("{}", format!("{:?}", history))
+    }
+    content.eq(&String::from("q"))
 }
 
-pub fn start_server() -> (JoinHandle<()>, String) {
-  println!("Open a port");
-  let mut buffer = String::new();
-  stdin()
-      .read_line(&mut buffer)
-      .expect("Did not enter a correct string");
-  let server_addr = String::from("127.0.0.1:") + &buffer[0..4];
-  (
-      spawn(move || {
-          let listener = TcpListener::bind(&server_addr[..]).unwrap();
-          println!("server started");
-          let mut streams_index: Vec<String> = Vec::new();
-          let mut history: Vec<String> = Vec::new();
-          for stream in listener.incoming() {
-              let stream = stream.unwrap();
-              if handle(stream, &mut streams_index, &mut history, &listener.local_addr().unwrap()) {
-                  break;
-              }
-          }
-          println!("server close");
-      }),
-      buffer[0..4].to_string(),
-  )
+pub async fn start_server(port: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let listener = TcpListener::bind(String::from("127.0.0.1:") + port).await?;
+    let streams_index = Arc::new(Mutex::new(Vec::<String>::new()));
+    let history = Arc::new(Mutex::new(Vec::<String>::new()));
+    println!("Start listening on {}", port);
+    loop {
+        let (mut socket, _) = listener.accept().await?;
+        let srv_addr = listener.local_addr().unwrap();
+        let streams_index = streams_index.clone();
+        let history = history.clone();
+        tokio::spawn(async move {
+            let mut buf = [0; 1024];
+            // In a loop, read data from the socket and write the data back.
+            loop {
+                let n = match socket.read(&mut buf).await {
+                    // socket closed
+                    Ok(n) if n == 0 => return,
+                    Ok(n) => n,
+                    Err(e) => {
+                        eprintln!("failed to read from socket; err = {:?}", e);
+                        return;
+                    }
+                };
+                let mut hist_lock = history.lock().await;
+                let mut index_lock = streams_index.lock().await;
+                if handle(
+                    str::from_utf8(&buf[0..n]).unwrap().trim_end(),
+                    &mut index_lock,
+                    &mut hist_lock,
+                    &srv_addr,
+                ).await {
+                    println!("Quit server");
+                    return;
+                }
+                //if let Err(e) = socket.write_all(&buf[0..n]).await {
+                //    eprintln!("failed to write to socket; err = {:?}", e);
+                //    return;
+                //}
+            }
+        });
+    }
 }
