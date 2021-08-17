@@ -1,6 +1,7 @@
 use super::commands::*;
 use std::net::SocketAddr;
 use std::vec::Vec;
+use regex::Regex;
 
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
@@ -9,27 +10,64 @@ use std::str;
 use tokio::sync::Mutex;
 use std::sync::Arc;
 
+#[derive(Clone, Copy)]
+struct Command<'a> {
+    name: &'a str,
+    option: &'a str,
+}
+
+fn parse_command(input: &'_ str) -> Option<Command<'_>> {
+    let re: Regex = Regex::new(r"^([a-z\?]+)[ ]*(.*?)$").unwrap();
+    let caps = re.captures_iter(input).filter_map(|cap| {
+        Some(Command {
+            name : match cap.get(1) {
+                Some(name) => { name.as_str() },
+                _ => { return None; },
+            },
+            option: match cap.get(2) {
+                Some(option) => { option.as_str() },
+                _ => { "" },
+            },
+        })
+    });
+    let vec = caps.collect::<Vec<Command>>();
+    if vec.len() == 1 {
+        Some(vec[0])
+    } else {
+        None
+    }
+}
+
 async fn handle(
     content: &str,
     streams_index: &mut Vec<String>,
     history: &mut Vec<String>,
     srv_addr: &SocketAddr,
 ) -> bool {
-    if content.starts_with("index") {
+    let act = parse_command(content);
+    if act.is_none() {
+        eprintln!("Luc! Error input ---> {}", content);
+        return true;
+    }
+    let action = act.unwrap();
+    if action.name == "index" {
         println!("index: {}", format!("{:?}", streams_index));
-    } else if content.starts_with("luc ") {
-        println!("command luc");
+    } else if action.name == "luc" {
         command_i(content, streams_index, history).await;
-    } else if content.starts_with("p ") {
+    } else if action.name == "p" {
         command_p(&mut content.to_owned(), streams_index, history).await;
-    } else if content.starts_with("luc? ") {
-        command_connect(content, srv_addr.to_string(), streams_index).await;
-    } else if content.starts_with("connection") {
+    } else if action.name == "luc?" {
+        if action.option.is_empty() {
+            println!("TODO: get every body");
+        } else {
+            command_connect(content, srv_addr.to_string(), streams_index).await;
+        }
+    } else if action.name == "connection" {
         command_connection(content, streams_index);
-    } else if content.starts_with("history") {
+    } else if action.name == "history" {
         println!("{}", format!("{:?}", history))
     }
-    content.eq(&String::from("q"))
+    action.name == "q"
 }
 
 pub async fn start_server(port: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -72,5 +110,40 @@ pub async fn start_server(port: &str) -> Result<(), Box<dyn std::error::Error>> 
                 //}
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_command;
+
+    #[test]
+    fn test_empty() {
+        let command = parse_command("");
+        assert!(command.is_none());
+    }
+
+    #[test]
+    fn test_str_command() {
+        let command = parse_command("luc");
+        assert!(command.is_some());
+        assert_eq!(command.unwrap().name, "luc");
+        assert_eq!(command.unwrap().option, "");
+    }
+
+    #[test]
+    fn test_str_command_inter() {
+        let command = parse_command("luc?");
+        assert!(command.is_some());
+        assert_eq!(command.unwrap().name, "luc?");
+        assert_eq!(command.unwrap().option, "");
+    }
+
+    #[test]
+    fn test_str_command_and_option() {
+        let command = parse_command("luc? opt opt ! opt ?");
+        assert!(command.is_some());
+        assert_eq!(command.unwrap().name, "luc?");
+        assert_eq!(command.unwrap().option, "opt opt ! opt ?");
     }
 }
