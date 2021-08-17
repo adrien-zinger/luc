@@ -5,7 +5,7 @@ use std::net::{SocketAddr};
 
 /// todo:
 /// Propagate a command with another strategy ?
-fn propagate(command: &str, options: String, streams_index: &Vec<String>) {
+fn propagate(command: &str, options: String, streams_index: &[String]) {
   for stream in streams_index {
       send(
           command.to_owned() + &options[..],
@@ -14,10 +14,9 @@ fn propagate(command: &str, options: String, streams_index: &Vec<String>) {
   }
 }
 
-pub fn command_p(mut content: &mut String, streams_index: &Vec<String>, history: &mut Vec<String>) -> bool {
+pub fn command_p(mut content: &mut String, streams_index: &[String], history: &mut Vec<String>) -> bool {
   let command = get_first_n_words(&mut content, 2);
-  if command.is_some() {
-    let cmd = command.unwrap();
+  if let Some(cmd) = command {
     for h in history.iter() {
       if content.to_string().eq(h) {
         return false;
@@ -32,7 +31,7 @@ pub fn command_p(mut content: &mut String, streams_index: &Vec<String>, history:
   true
 }
 
-pub fn command_i(content: &String, streams_index: &Vec<String>, history: &mut Vec<String>) {
+pub fn command_i(content: &str, streams_index: &[String], history: &mut Vec<String>) {
   let mut command = String::from("p ");
   match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
     Ok(t) => command += &t.as_secs().to_string()[..],
@@ -40,17 +39,17 @@ pub fn command_i(content: &String, streams_index: &Vec<String>, history: &mut Ve
   }
   history.push(String::from(&command[..]));
   command.push(' ');
-  propagate(&command[..], remove_prefix(&content, "luc "), streams_index);
+  propagate(&command[..], remove_prefix(content, "luc "), streams_index);
 }
 
-pub fn command_connect(content: &String, server_addr: String, streams_index: &mut Vec<String>) {
-  let addr = remove_prefix(&content, "luc? ");
+pub fn command_connect(content: &str, server_addr: String, streams_index: &mut Vec<String>) {
+  let addr = remove_prefix(content, "luc? ");
   streams_index.push(addr);
   propagate("connection", server_addr, streams_index);
 }
 
-pub fn command_connection(content: &String, streams_index: &mut Vec<String>) {
-  let addr = remove_prefix(&content, "connection");
+pub fn command_connection(content: &str, streams_index: &mut Vec<String>) {
+  let addr = remove_prefix(content, "connection");
   println!("luc?");
   streams_index.push(addr);
 }

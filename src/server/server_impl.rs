@@ -22,7 +22,7 @@ fn handle(
   srv_addr: &SocketAddr,
 ) -> bool {
   let mut buffer = [0; 1024];
-  stream.read(&mut buffer).unwrap();
+  stream.read_exact(&mut buffer).unwrap();
   let mut content = get_msg(buffer);
   if content.starts_with("index") {
     println!("index: {}", format!("{:?}", streams_index));

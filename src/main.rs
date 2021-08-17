@@ -1,10 +1,10 @@
-use std::io::prelude::*;
 use std::io::stdin;
-use std::net::{SocketAddr, TcpStream};
+use std::net::{SocketAddr};
 
 mod server;
 mod tools;
 use server::start_server;
+use tools::send;
 
 fn run_client(port: String) -> std::io::Result<()> {
     loop {
@@ -15,13 +15,6 @@ fn run_client(port: String) -> std::io::Result<()> {
         let local_srv = &SocketAddr::from(([127, 0, 0, 1], port[..4].parse::<u16>().unwrap()));
         send(input, local_srv);
     }
-}
-
-fn send(content: String, addr: &SocketAddr) -> bool {
-    let mut stream =
-        TcpStream::connect_timeout(addr, std::time::Duration::new(30, 0)).expect("wow");
-    stream.write(content.as_bytes()).expect("writting stream error");
-    content.eq(&String::from("q\n"))
 }
 
 fn main() {
