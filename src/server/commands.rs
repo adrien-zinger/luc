@@ -40,17 +40,17 @@ pub fn command_i(content: &String, streams_index: &Vec<String>, history: &mut Ve
   }
   history.push(String::from(&command[..]));
   command.push(' ');
-  propagate(&command[..], remove_prefix(&content, "i "), streams_index);
+  propagate(&command[..], remove_prefix(&content, "luc "), streams_index);
 }
 
 pub fn command_connect(content: &String, server_addr: String, streams_index: &mut Vec<String>) {
-  let addr = remove_prefix(&content, "connect ");
+  let addr = remove_prefix(&content, "luc? ");
   streams_index.push(addr);
   propagate("connection", server_addr, streams_index);
 }
 
 pub fn command_connection(content: &String, streams_index: &mut Vec<String>) {
   let addr = remove_prefix(&content, "connection");
-  println!("connection {}", addr);
+  println!("luc?");
   streams_index.push(addr);
 }

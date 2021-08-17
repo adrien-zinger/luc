@@ -23,8 +23,9 @@ pub fn remove_prefix(msg: &String, to_strip: &str) -> String {
 }
 
 pub fn send(content: String, addr: &std::net::SocketAddr) -> bool {
-  let mut stream =
-      TcpStream::connect_timeout(addr, std::time::Duration::new(30, 0)).expect("Stream connection timeout");
-  stream.write(content.as_bytes()).expect("Error write in stream");
+  match TcpStream::connect_timeout(addr, std::time::Duration::new(30, 0)) {
+    Ok(stream) => stream.write(content.as_bytes()).expect("Error write in stream"),
+    Err(_) => println!("Nothing for mow"), // should remove from index
+  };
   content.eq(&String::from("q\n"))
 }

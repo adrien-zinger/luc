@@ -6,8 +6,6 @@ mod server;
 mod tools;
 use server::start_server;
 
-
-
 fn run_client(port: String) -> std::io::Result<()> {
     loop {
         let mut input = String::new();
@@ -28,7 +26,6 @@ fn send(content: String, addr: &SocketAddr) -> bool {
 
 fn main() {
     let (jh, port) = start_server();
-    println!("port {}", port);
     run_client(port).expect("Failed running client");
     jh.join().expect("Failed joining server thread");
 }

@@ -26,11 +26,11 @@ fn handle(
   let mut content = get_msg(buffer);
   if content.starts_with("index") {
     println!("index: {}", format!("{:?}", streams_index));
-  } else if content.starts_with("i ") {
+  } else if content.starts_with("luc ") {
     command_i(&content, streams_index, history);
   } else if content.starts_with("p ") {
     command_p(&mut content, streams_index, history);
-  } else if content.starts_with("connect ") {
+  } else if content.starts_with("luc? ") {
     command_connect(&content, srv_addr.to_string(), streams_index);
   } else if content.starts_with("connection") {
     command_connection(&content, streams_index);
