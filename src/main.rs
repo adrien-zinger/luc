@@ -15,7 +15,11 @@ fn run_client(port: String) -> std::io::Result<()> {
             .read_line(&mut input)
             .expect("Luc! You not a correct string");
         tokio::spawn(async move {
-            post(input, SocketAddr::from(([127, 0, 0, 1], p.clone()[..4].parse::<u16>().unwrap()))).await;
+            post(
+                input,
+                SocketAddr::from(([127, 0, 0, 1], p.clone()[..4].parse::<u16>().unwrap())),
+            )
+            .await;
         });
     }
 }
