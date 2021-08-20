@@ -81,7 +81,7 @@ async fn handle(
 }
 
 pub async fn start_server(port: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let listener = TcpListener::bind(String::from("127.0.0.1:") + port).await?;
+    let listener = TcpListener::bind(String::from("0.0.0.0:") + port).await?;
     let streams_index = Arc::new(Mutex::new(Vec::<String>::new()));
     let history = Arc::new(Mutex::new(Vec::<String>::new()));
     println!("Start listening on {}", port);
