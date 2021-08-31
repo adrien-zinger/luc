@@ -16,7 +16,8 @@ where
 
 fn read_group_file(group: &str) -> Vec::<String> {
   let mut ret: Vec::<String> = Vec::new();
-  if let Ok(lines) = read_lines(group) {
+  let file_path = String::from(group) + ".group";
+  if let Ok(lines) = read_lines(file_path) {
       for line in lines.flatten() {
           if !line.is_empty() {
               ret.push(line);
@@ -27,7 +28,8 @@ fn read_group_file(group: &str) -> Vec::<String> {
 }
 
 fn write_group_file(group: &str, ips: Vec::<String>) {
-  let path = Path::new(&group);
+  let file_path = String::from(group) + ".group";
+  let path = Path::new(&file_path);
   let display = path.display();
   let mut file = match File::create(&path) {
       Err(why) => panic!("couldn't create {}: {}", display, why),
@@ -58,13 +60,16 @@ pub async fn group_invite(
   option: &str
 ) {
   let command: Vec<&str> = option.split(' ').collect();
-  let ips = read_group_file(command[0]);
-  let mut new_ips: Vec<String> = ips.clone();
+  let mut ips = read_group_file(command[0]);
   for ip in command.iter().skip(1) {
-    new_ips.push(ip.to_string());
+    let ip = ip.to_string();
+    if ips.contains(&ip) {
+      return println!("Luc! Luc is already in the group");
+    }
+    ips.push(ip);
   }
-  let content = format!("update {}\n{}", command[0], new_ips.join("\n"));
-  for ip in ips {
+  let content = format!("updategroup {}\n{}", command[0], ips.join("\n"));
+  for ip in ips.iter() {
     // todo multiple send
     post(content.to_owned(), ip.parse().unwrap()).await;
   }

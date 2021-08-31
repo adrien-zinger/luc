@@ -53,7 +53,7 @@ async fn handle(
         group_create(action.option, &srv_addr.to_string()).await;
     } else if action.name == "invite" {
         group_invite(action.option).await;
-    } else if action.name == "update_group" {
+    } else if action.name == "updategroup" {
         group_update(action.option).await;
     }
     action.name == "q"
