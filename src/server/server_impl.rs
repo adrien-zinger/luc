@@ -2,6 +2,7 @@ use crate::server::command_parser::parse_command;
 use super::commands::command_i::command_i;
 use super::commands::command_p::command_p;
 use super::commands::command_inter::{commands_luc_inter, command_connection};
+use super::commands::command_group::*;
 use std::net::SocketAddr;
 use std::vec::Vec;
 
@@ -40,19 +41,26 @@ async fn handle(
             content,
             streams_index,
             history,
-            srv_addr,
+            srv_addr, // todo: send &str instead of a useless big object
             stream,
-        )
+        ) // todo send less objects, maybe create structures for index/history?
         .await
     } else if action.name == "connection" {
         command_connection(content, streams_index).await;
     } else if action.name == "history" {
         println!("{}", format!("{:?}", history.lock().await.to_vec()))
+    } else if action.name == "group" {
+        group_create(action.option, &srv_addr.to_string()).await;
+    } else if action.name == "invite" {
+        group_invite(action.option).await;
+    } else if action.name == "update_group" {
+        group_update(action.option).await;
     }
     action.name == "q"
 }
 
-pub async fn start_server(port: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_server(port: &str)
+-> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(String::from("0.0.0.0:") + port).await?;
     let streams_index = Arc::new(Mutex::new(Vec::<String>::new()));
     let history = Arc::new(Mutex::new(Vec::<String>::new()));
@@ -65,6 +73,10 @@ pub async fn start_server(port: &str) -> Result<(), Box<dyn std::error::Error>> 
         tokio::spawn(async move {
             let mut buf = [0; 1024];
             // In a loop, read data from the socket and write the data back.
+            // todo: read should decreypt with a local file key, and post
+            // should encrypt with the same
+            // todo 2: the read should be able to handle chunks, and post
+            // should be able to understand when to send a chunk and sends
             let n = match socket.read(&mut buf).await {
                 // socket closed
                 Ok(n) if n == 0 => return,
