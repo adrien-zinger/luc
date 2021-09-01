@@ -3,6 +3,7 @@ use super::commands::command_i::command_i;
 use super::commands::command_p::command_p;
 use super::commands::command_inter::{commands_luc_inter, command_connection};
 use super::commands::command_group::*;
+use super::commands::command_research as find;
 use std::net::SocketAddr;
 use std::vec::Vec;
 
@@ -13,6 +14,7 @@ use std::str;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+// Todo: handle command in a separeted file
 async fn handle(
     content: &str,
     streams_index: &Arc<Mutex<Vec<String>>>,
@@ -55,6 +57,8 @@ async fn handle(
         group_invite(action.option).await;
     } else if action.name == "updategroup" {
         group_update(action.option).await;
+    } else if action.name == "find" {
+        find::propagate(action.option, streams_index, history).await;
     }
     action.name == "q"
 }
@@ -87,11 +91,12 @@ pub async fn start_server(port: &str)
                 }
             };
             if handle(
-                str::from_utf8(&buf[0..n]).unwrap().trim_end(),
-                &ind_arc,
-                &his_arc,
-                &srv_addr,
-                &mut socket,
+                // todo: make a structure for arcs & for command
+                str::from_utf8(&buf[0..n]).unwrap().trim_end(), // todo: struct 1
+                &ind_arc, // todo: struct 2
+                &his_arc, // todo: struct 2
+                &srv_addr, // todo: struct 1
+                &mut socket, // todo: struct 1
             )
             .await
             {

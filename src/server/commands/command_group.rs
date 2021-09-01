@@ -56,6 +56,10 @@ pub async fn group_create(
   write_group_file(option, vec![ip.to_owned()])
 }
 
+pub async fn _group_join(_option: &str) {
+  // 1. Propagate on the network a research
+}
+
 pub async fn group_invite(
   option: &str
 ) {
