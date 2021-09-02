@@ -25,14 +25,20 @@ pub fn remove_prefix(msg: &str, to_strip: &str) -> String {
     }
 }
 
-pub async fn post(content: String, addr: std::net::SocketAddr) {
+pub async fn write(content: &str, stream: &mut TcpStream) {
+    if stream.write_all(content.as_bytes()).await.is_err() {
+        eprintln!("Cannot write to stream");
+    }
+}
+
+pub async fn post(content: &str, addr: std::net::SocketAddr) {
     match TcpStream::connect(addr).await {
         Ok(mut stream) => {
             if stream.write_all(content.as_bytes()).await.is_err() {
                 eprintln!("Cannot write to stream");
             }
-        },
-        Err(e) => panic!("{}", e)
+        }
+        Err(e) => panic!("{}", e),
     };
 }
 

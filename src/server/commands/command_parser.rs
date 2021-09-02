@@ -9,19 +9,19 @@ pub struct Command<'a> {
 pub fn parse_command(input: &'_ str) -> Option<Command<'_>> {
     let re: Regex = Regex::new(r"^([a-z\?]+)[ ]*([[:ascii:]\*\n]*)").unwrap();
     let caps = re.captures_iter(input).filter_map(move |cap| {
-            Some(Command {
-                name: match cap.get(1) {
-                    Some(name) => name.as_str(),
-                    _ => {
-                        return None;
-                    }
-                },
-                option: match cap.get(2) {
-                    Some(option) => option.as_str(),
-                    _ => ""
-                },
-            })
-        });
+        Some(Command {
+            name: match cap.get(1) {
+                Some(name) => name.as_str(),
+                _ => {
+                    return None;
+                }
+            },
+            option: match cap.get(2) {
+                Some(option) => option.as_str(),
+                _ => "",
+            },
+        })
+    });
     let vec = caps.collect::<Vec<Command>>();
     if vec.len() == 1 {
         Some(vec[0])

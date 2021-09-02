@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 
 mod server;
 mod tools;
-use server::start_server_thread;
+use server::start_server;
 use tokio::runtime::Runtime;
 use tools::post;
 
@@ -16,7 +16,7 @@ fn run_client(port: String) -> std::io::Result<()> {
             .expect("Luc! You not a correct string");
         tokio::spawn(async move {
             post(
-                input,
+                &input,
                 SocketAddr::from(([127, 0, 0, 1], p.clone()[..4].parse::<u16>().unwrap())),
             )
             .await;
@@ -34,7 +34,7 @@ fn main() {
                 .expect("Luc! You not a correct string");
             let p1 = buffer.clone();
             tokio::spawn(async move {
-                if let Err(err) = start_server_thread(&buffer[..4]).await {
+                if let Err(err) = start_server(&buffer[..4]).await {
                     eprintln!("Luc! Error server at {} n't ?", err);
                 }
             });
