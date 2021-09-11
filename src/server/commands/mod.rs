@@ -51,6 +51,12 @@ pub async fn handle(content: &str, stream: &mut TcpStream, globals: &Globals) ->
         group::invite(action.option).await;
     } else if action.name == "updategroup" {
         group::update(action.option).await;
+    } else if action.name == "have" { // response to check or force update
+        group::have(action.option).await;
+    } else if action.name == "fetch" { // want or check
+        group::fetch(action.option).await;
+    } else if action.name == "receive" { // receive file from someone
+        group::receive(action.option).await;
     } else if action.name == "findprop" {
         find::propagate(action.option, &globals.index, &globals.history).await;
     } else if action.name == "addr" {

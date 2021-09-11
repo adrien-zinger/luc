@@ -70,6 +70,18 @@ pub async fn invite(option: &str) {
     }
 }
 
+pub async fn have(_option: &str) {
+    
+}
+
+pub async fn fetch(_option: &str) {
+    
+}
+
+pub async fn receive(_option: &str) {
+    
+}
+
 pub async fn update(option: &str) {
     let command: Vec<&str> = option.split('\n').collect();
     let mut ips: Vec<String> = Vec::new();

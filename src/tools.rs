@@ -25,6 +25,21 @@ pub fn remove_prefix(msg: &str, to_strip: &str) -> String {
     }
 }
 
+pub async fn _send_file(header: &str, path: &str, stream: &mut TcpStream) {
+    if let Ok(data) = std::fs::read(path) {
+        _write_bytes(header, data, stream).await;
+    }
+}
+
+pub async fn _write_bytes(header: &str, mut content: Vec::<u8>, stream: &mut TcpStream) {
+    let mut v: Vec::<u8> = header.as_bytes().to_vec();
+    v.push("\n".as_bytes()[0]);
+    v.append(&mut content);
+    if stream.write_all(&v).await.is_err() {
+        eprintln!("Cannot write to stream");
+    }
+}
+
 pub async fn write(content: &str, stream: &mut TcpStream) {
     if stream.write_all(content.as_bytes()).await.is_err() {
         eprintln!("Cannot write to stream");
