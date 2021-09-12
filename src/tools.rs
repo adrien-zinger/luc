@@ -82,3 +82,20 @@ pub fn hash_command(command: &str) -> Option<String> {
     }
     None
 }
+
+pub async fn read(stream: &mut TcpStream) -> (String, Vec::<u8>) {
+    let mut buf = [0; 1024];
+    let n = match stream.read(&mut buf).await {
+        Ok(n) => n,
+        Err(e) => {
+            eprintln!("Luc! failed to read from socket; err = {:?}", e);
+            0
+        }
+    };
+    let mut command = std::str::from_utf8(&buf[0..n]).unwrap().trim_end();
+    if command.starts_with("chunks") {
+        command = command.strip_prefix("chunks").unwrap();
+        // todo read chunks
+    }
+    (command.to_string(), Vec::new())
+}

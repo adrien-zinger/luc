@@ -12,7 +12,7 @@ use command_parser::parse_command;
 use tokio::net::TcpStream;
 
 // Todo: handle command in a separeted file
-pub async fn handle(content: &str, stream: &mut TcpStream, globals: &Globals) -> bool {
+pub async fn handle(content: &str, _binary: Option<Vec::<u8>>, stream: &mut TcpStream, globals: &Globals) -> bool {
     let act = parse_command(content);
     if act.is_none() {
         eprintln!("Luc! Error input ---> \n{}", content);
