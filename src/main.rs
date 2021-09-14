@@ -33,7 +33,7 @@ fn main() {
                 .read_line(&mut buffer)
                 .expect("Luc! You not a correct string");
             let p1 = buffer.clone();
-            tokio::spawn(async move {
+            tokio::spawn(async move { // todo: useless spawn ?
                 if let Err(err) = start_server(&buffer[..4]).await {
                     eprintln!("Luc! Error server at {} n't ?", err);
                 }

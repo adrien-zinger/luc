@@ -32,17 +32,22 @@ pub async fn start_server(port: &str) -> Result<(), Box<dyn std::error::Error>> 
         let (mut socket, _) = listener.accept().await?;
         let globals = globals.clone();
         let msg = read(&mut socket).await;
-        tokio::spawn(async move {
-            if commands::handle(
-                &msg.0,
-                None,
-                &mut socket,
-                &globals,
-            )
-            .await
-            {
-                println!("Quit server");
-            }
-        });
+        if let Some(msg) = msg {
+            tokio::spawn(async move {
+                if commands::handle(
+                    &msg.0,
+                    None,
+                    &mut socket,
+                    &globals,
+                )
+                .await
+                {
+                    println!("Quit server");
+                }
+            });
+        } else {
+            eprintln!("Luc! error reading the message")
+        }
+        
     }
 }

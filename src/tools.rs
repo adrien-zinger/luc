@@ -25,17 +25,14 @@ pub fn remove_prefix(msg: &str, to_strip: &str) -> String {
     }
 }
 
-pub async fn _send_file(header: &str, path: &str, stream: &mut TcpStream) {
+pub async fn _send_file(command: &str, path: &str, stream: &mut TcpStream) {
     if let Ok(data) = std::fs::read(path) {
-        _write_bytes(header, data, stream).await;
+        _write_binary(command, &data, stream).await;
     }
 }
 
-pub async fn _write_bytes(header: &str, mut content: Vec::<u8>, stream: &mut TcpStream) {
-    let mut v: Vec::<u8> = header.as_bytes().to_vec();
-    v.push("\n".as_bytes()[0]);
-    v.append(&mut content);
-    if stream.write_all(&v).await.is_err() {
+pub async fn _write_binary(command: &str, binary: &[u8], stream: &mut TcpStream) {
+    if stream.write_all(&write_buffer(command, Some(binary))).await.is_err() {
         eprintln!("Cannot write to stream");
     }
 }
@@ -46,12 +43,16 @@ pub async fn write(content: &str, stream: &mut TcpStream) {
     }
 }
 
+async fn write_command(stream: &mut TcpStream, command: &str) {
+    if stream.write_all(&write_buffer(command, None)).await.is_err() {
+        eprintln!("Cannot write to stream");
+    }
+}
+
 pub async fn post(content: &str, addr: std::net::SocketAddr) {
     match TcpStream::connect(addr).await {
         Ok(mut stream) => {
-            if stream.write_all(content.as_bytes()).await.is_err() {
-                eprintln!("Cannot write to stream");
-            }
+            write_command(&mut stream, content).await;
         }
         Err(e) => panic!("{}", e),
     };
@@ -83,19 +84,69 @@ pub fn hash_command(command: &str) -> Option<String> {
     None
 }
 
-pub async fn read(stream: &mut TcpStream) -> (String, Vec::<u8>) {
-    let mut buf = [0; 1024];
-    let n = match stream.read(&mut buf).await {
+fn get_len(buf: &[u8]) -> usize {
+    let mut len = buf[0] as usize;
+    len <<= 8;
+    len += buf[1] as usize;
+    len <<= 8;
+    len += buf[2] as usize;
+    len <<= 8;
+    len += buf[3] as usize;
+    len
+}
+
+fn write_buffer(command: &str, binary: Option<&[u8]>) -> Vec<u8> {
+    let mut buf_vec = Vec::new();
+    if let Some(vec) = binary {
+        let command = format!("binary {}", command);
+        let len = command.len() as i32;
+        buf_vec.append(&mut len.to_be_bytes().to_vec());
+        buf_vec.append(&mut command.as_bytes().to_vec());
+        buf_vec.append(&mut vec.to_vec());
+    } else {
+        let len = command.len() as i32;
+        buf_vec.append(&mut len.to_be_bytes().to_vec());
+        buf_vec.append(&mut command.as_bytes().to_vec());
+    }
+    buf_vec
+}
+
+fn read_buffer(buf: Vec<u8>) -> Option<(String, Option<Vec::<u8>>)> {
+    let command_len = get_len(&buf);
+    let mut command = std::str::from_utf8(&buf[4..command_len+4]).unwrap();
+    if command.starts_with("binary") {
+        command = command.strip_prefix("binary ").unwrap();        
+        let mut buf = buf.to_vec();
+        buf.drain(0..command_len+4);
+        return Some((command.to_string(), Some(buf)))
+    }
+    Some((command.to_string(), None))
+}
+
+pub async fn read(stream: &mut TcpStream) -> Option<(String, Option<Vec::<u8>>)> {
+    let mut buf_vec = Vec::new();
+    let n = match stream.read_to_end(&mut buf_vec).await {
         Ok(n) => n,
         Err(e) => {
             eprintln!("Luc! failed to read from socket; err = {:?}", e);
             0
         }
     };
-    let mut command = std::str::from_utf8(&buf[0..n]).unwrap().trim_end();
-    if command.starts_with("chunks") {
-        command = command.strip_prefix("chunks").unwrap();
-        // todo read chunks
+    if n < 5 {
+        eprintln!("Error input too small");
+        return None;
     }
-    (command.to_string(), Vec::new())
+    read_buffer(buf_vec)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_read_write() {
+        let buf = write_buffer("command", Some(&vec![1,2,3]));
+        let res = read_buffer(buf).unwrap();
+        assert_eq!(res.0, "command");
+        assert_eq!(res.1, Some(vec![1,2,3]));
+    }
 }
