@@ -29,19 +29,14 @@ pub async fn start_server(port: &str) -> Result<(), Box<dyn std::error::Error>> 
     let globals = Globals::new();
     println!("Start listening on {}", port);
     loop {
-        let (mut socket, _) = listener.accept().await?;
+        let (mut stream, _) = listener.accept().await?;
         let globals = globals.clone();
-        let msg = read(&mut socket).await;
+        let msg = read(&mut stream).await;
         if let Some(msg) = msg {
+            let command = msg.0;
+            let binary = msg.1.unwrap_or_default();
             tokio::spawn(async move {
-                if commands::handle(
-                    &msg.0,
-                    None,
-                    &mut socket,
-                    &globals,
-                )
-                .await
-                {
+                if commands::handle(&command, &binary, &mut stream, &globals).await {
                     println!("Quit server");
                 }
             });

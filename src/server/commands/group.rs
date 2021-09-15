@@ -1,10 +1,11 @@
 // Todo will need to lock other peer lists when the
 // synchronisation will be implemented
-use crate::tools::post;
+use crate::tools::{post, put, write};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader, Lines, Result};
 use std::path::Path;
+use tokio::net::TcpStream;
 
 fn read_lines<P>(filename: P) -> Result<Lines<BufReader<File>>>
 where
@@ -70,15 +71,38 @@ pub async fn invite(option: &str) {
     }
 }
 
-pub async fn have(_option: &str) {
-    
+pub async fn have(option: &str, stream: &mut TcpStream) {
+    let opt: Vec<&str> = option.split(' ').collect();
+    println!("check a group {}", opt[0]);
+    // todo get folder corresponding to the group
+    // send for each file found
+    // have path_to_file last_modification_date size_of_file
+    // Followed by 0000
+    write("0000", stream).await;
 }
 
-pub async fn fetch(_option: &str) {
-    
+pub async fn fetch(option: &str, me: &str) {
+    let opt: Vec<&str> = option.split(' ').collect();
+    let ips = read_group_file(opt[0]);
+    for ip in ips {
+        if ip == me { continue }
+        let content = &format!("have {}", opt[0]);
+        let resp = put(content, ip.parse().unwrap()).await;
+        if let Some(have_content) = resp {
+            let lines: Vec<&str> = have_content.split('\n').collect();
+            println!("Receive from {}:\n{}", ip, lines.join("\n"));
+        }
+        // todo read all have and determine who has the latest version
+        // If I have the latest version, do nothing
+        // else check wich file are differents and create a list to update
+        // then check if someone in the group has a diff for each file
+        //  that we should update (to think about a "find diff" command)
+        // then download the requiered files and the required diff
+        // then update the current folder of the group
+    }
 }
 
-pub async fn receive(_option: &str) {
+pub async fn receive(_option: &str, _binary: &[u8]) {
     
 }
 
