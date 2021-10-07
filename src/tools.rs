@@ -148,5 +148,9 @@ mod tests {
         let res = read_buffer(buf).unwrap();
         assert_eq!(res.0, "command");
         assert_eq!(res.1, Some(vec![1,2,3]));
+        let buf = write_buffer("command one", None);
+        let res = read_buffer(buf).unwrap();
+        assert_eq!(res.0, "command one");
+        assert_eq!(res.1, None);
     }
 }

@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 
 mod server;
 mod tools;
+mod folders;
 use server::start_server;
 use tokio::runtime::Runtime;
 use tools::post;
